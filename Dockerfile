@@ -2,13 +2,16 @@ FROM golang:1.21-alpine
 
 WORKDIR /app
 
-# ✅ ต้อง copy ก่อน tidy
+# ✅ 1. Copy go.mod ก่อน
 COPY go.mod go.sum ./
+
+# ✅ 2. run go mod tidy ได้เลย
 RUN go mod tidy
 
-# แล้วค่อย copy โค้ด
+# ✅ 3. ค่อย copy โค้ดที่เหลือ
 COPY . .
 
+# ✅ 4. build
 RUN go build -o main .
 
 CMD ["./main"]
