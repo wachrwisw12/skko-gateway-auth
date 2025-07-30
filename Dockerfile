@@ -1,23 +1,19 @@
-# Step 1: ติดตั้ง Go 1.24.4 แบบ custom
-FROM alpine:latest AS go-installer
+FROM golang:1.21-alpine
 
-RUN apk add --no-cache curl tar gcc musl-dev git \
-    && curl -LO https://go.dev/dl/go1.24.4.src.tar.gz \
-    && tar -C /usr/local -xzf go1.24.4.src.tar.gz
+# Set the Current Working Directory inside the container
+WORKDIR /app
 
-ENV GOROOT=/usr/local/go
-ENV PATH=$GOROOT/bin:$PATH
+# Copy go mod and sum files
+COPY go.mod go.sum ./
 
-WORKDIR /go-src
+# Download dependencies
+RUN go mod tidy
+
+# Copy the source code
 COPY . .
 
-RUN go mod tidy && go build -o main .
+# Build the Go app
+RUN go build -o main .
 
-# Step 2: Run แบบ minimal
-FROM alpine:latest
-
-WORKDIR /app
-COPY --from=go-installer /go-src/main .
-
-EXPOSE 3000
+# Run the binary (optional)
 CMD ["./main"]
