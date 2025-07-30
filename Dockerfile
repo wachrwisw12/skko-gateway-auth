@@ -1,17 +1,19 @@
-FROM golang:1.21-alpine
-
+# Build stage
+FROM golang:1.24-alpine AS builder
 WORKDIR /app
 
-# ✅ 1. Copy go.mod ก่อน
 COPY go.mod go.sum ./
+RUN go mod download
 
-# ✅ 2. run go mod tidy ได้เลย
-RUN go mod tidy
-
-# ✅ 3. ค่อย copy โค้ดที่เหลือ
 COPY . .
 
-# ✅ 4. build
-RUN go build -o main .
+RUN go build -o gateway .
 
-CMD ["./main"]
+FROM alpine:latest
+WORKDIR /app
+
+COPY --from=builder /app/gateway .
+
+EXPOSE 3000
+
+CMD ["./gateway"]
