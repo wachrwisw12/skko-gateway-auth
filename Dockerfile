@@ -1,19 +1,14 @@
 FROM golang:1.21-alpine
 
-# Set the Current Working Directory inside the container
 WORKDIR /app
 
-# Copy go mod and sum files
+# ✅ ต้อง copy ก่อน tidy
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod tidy
 
-# Copy the source code
+# แล้วค่อย copy โค้ด
 COPY . .
 
-# Build the Go app
 RUN go build -o main .
 
-# Run the binary (optional)
 CMD ["./main"]
