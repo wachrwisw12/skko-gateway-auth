@@ -23,5 +23,5 @@ func main() {
 }
 
 func handler(c *fiber.Ctx) error {
-	return c.SendString("test345")
+	return c.SendString("tesกt345")
 }
