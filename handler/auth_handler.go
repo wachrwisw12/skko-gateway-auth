@@ -3,9 +3,10 @@ package handler
 import (
 	"fmt"
 
+	"skko-gateway-auth/middleware"
+	"skko-gateway-auth/services"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/wachrwisw12/corework-gateway-auth/middleware"
-	"github.com/wachrwisw12/corework-gateway-auth/services"
 )
 
 type LoginRequest struct {

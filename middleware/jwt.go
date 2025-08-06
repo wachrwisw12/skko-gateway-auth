@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"skko-gateway-auth/models"
+
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/wachrwisw12/corework-gateway-auth/models"
 
 	"github.com/gofiber/fiber/v2"
 )

@@ -4,8 +4,9 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/wachrwisw12/corework-gateway-auth/db"
-	"github.com/wachrwisw12/corework-gateway-auth/models"
+	"skko-gateway-auth/db"
+	"skko-gateway-auth/models"
+
 	"golang.org/x/crypto/bcrypt"
 )
 

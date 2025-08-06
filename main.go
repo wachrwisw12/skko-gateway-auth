@@ -5,11 +5,11 @@ import (
 	"log"
 	"os"
 
+	"skko-gateway-auth/db"
+	"skko-gateway-auth/routes"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
-
-	"github.com/wachrwisw12/corework-gateway-auth/db"
-	"github.com/wachrwisw12/corework-gateway-auth/routes"
 )
 
 var DB *sql.DB

@@ -1,8 +1,9 @@
 package routes
 
 import (
+	"skko-gateway-auth/handler"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/wachrwisw12/corework-gateway-auth/handler"
 )
 
 func SetupAuth(auth fiber.Router) {
