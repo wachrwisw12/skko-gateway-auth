@@ -1,8 +1,6 @@
-package handler
+package handler_auth
 
 import (
-	"fmt"
-
 	"skko-gateway-auth/middleware"
 	"skko-gateway-auth/services"
 
@@ -10,7 +8,7 @@ import (
 )
 
 type LoginRequest struct {
-	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -23,10 +21,9 @@ func LoginHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	user, err := services.LoginByUser(body.Username, body.Password)
-	fmt.Println(user, err)
+	user, err := services.LoginByEmail(body.Email, body.Password)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "ไม่สามารถเข้าสู่ระบบได้",
 		})
 	}
@@ -43,7 +40,8 @@ func LoginHandler(c *fiber.Ctx) error {
 		})
 	}
 	return c.JSON(fiber.Map{
-		"message": "เข้าสู่ระบบสำเร็จ",
-		"token":   token,
+		"message":  "เข้าสู่ระบบสำเร็จ",
+		"token":    token,
+		"userinfo": user,
 	})
 }

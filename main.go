@@ -20,7 +20,7 @@ func main() {
 		log.Println("⚠️ ไม่พบไฟล์ .env (ไม่เป็นไรถ้า set env ไว้ในระบบแล้ว)")
 	}
 	secret := os.Getenv("SECRET_KEY_GATEWAY")
-	if secret != "airhosGateWayAuth" {
+	if secret != "skko-GateWayAuth" {
 		log.Fatal("❌ SECRET_KEY_GATEWAY ไม่ถูกต้อง — ปิดโปรแกรม")
 	}
 
