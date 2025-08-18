@@ -44,7 +44,7 @@ func SendToEmail(c *fiber.Ctx) error {
 		}
 
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
-			"message": "ส่ง Email สำเร็จแล้ว",
+			"message": "ส่ง Email สำเร็จ",
 		})
 	} else {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
