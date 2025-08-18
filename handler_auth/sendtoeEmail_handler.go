@@ -32,7 +32,7 @@ func SendToEmail(c *fiber.Ctx) error {
 		otp, err := middleware.GenerateOTP(body.Email) // ✅ generate OTP 6 หลัก
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "failed to generate OTP ss",
+				"error": "failed to generate OTP ssdfdf",
 			})
 		}
 
