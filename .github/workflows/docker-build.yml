@@ -29,4 +29,6 @@ jobs:
       with:
         context: .
         push: true
-        tags: wachrwisw12/corework-gateway-auth:latest
+        tags: |
+          wachrwisw12/skko-gateway-auth:latest
+          wachrwisw12/skko-gateway-auth:${{ github.sha }}
