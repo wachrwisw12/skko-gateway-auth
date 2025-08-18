@@ -40,7 +40,7 @@ func LoginHandler(c *fiber.Ctx) error {
 		})
 	}
 	return c.JSON(fiber.Map{
-		"message":  "เข้าสู่ระบบสำเร็จ",
+		"message":  "เข้าสู่ระบบสำเร็จแล้ว",
 		"token":    token,
 		"userinfo": user,
 	})
