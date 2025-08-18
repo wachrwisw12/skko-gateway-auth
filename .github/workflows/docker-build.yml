@@ -28,6 +28,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
+        file: ./Dockerfile
         push: true
         tags: |
           wachrwisw12/skko-gateway-auth:latest
