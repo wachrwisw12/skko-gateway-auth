@@ -1,5 +1,6 @@
 # Build stage
-FROM golang:1.24-alpine AS builder
+FROM golang:1.21-alpine AS builder
+
 WORKDIR /app
 
 COPY go.mod go.sum ./
@@ -7,13 +8,16 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o gateway .
+# Build for Linux amd64
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o gateway main.go
 
-FROM alpine:latest
+# Final stage
+FROM alpine:3.18
+
 WORKDIR /app
-
 COPY --from=builder /app/gateway .
 
-EXPOSE 3000
+# ทำให้ binary เป็น executable
+RUN chmod +x ./gateway
 
-CMD ["./gateway"]
+ENTRYPOINT ["./gateway"]
