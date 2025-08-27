@@ -12,7 +12,7 @@ import (
 
 func LoginByUser(username string, password string) (*models.User, error) {
 	query := `
-        SELECT u.id, CONCAT(u.name) as fullname, u.status, u.password
+        SELECT u.id, CONCAT(u.name) as fullname, u.status, u.password,u.sex_id
         FROM users u
        
         WHERE u.username=? 
@@ -22,7 +22,7 @@ func LoginByUser(username string, password string) (*models.User, error) {
 	var user models.User
 	var hashedPassword string
 
-	err := row.Scan(&user.UserID, &user.FullName, &user.Status, &hashedPassword)
+	err := row.Scan(&user.UserID, &user.FullName, &user.Status, &hashedPassword, &user.SexID)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
@@ -39,7 +39,7 @@ func LoginByUser(username string, password string) (*models.User, error) {
 
 func LoginByEmail(email string, password string) (*models.User, error) {
 	query := `
-        SELECT u.user_id, CONCAT(u.prename,u.user_first_name,' ',u.user_last_name) as fullname,u.picture,u.password
+        SELECT u.user_id, CONCAT(u.prename,u.user_first_name,' ',u.user_last_name) as fullname,u.picture,u.password,COALESCE(u.sex_id, 0) AS sex_id
         FROM co_user u
     
         WHERE u.email=? 
@@ -49,7 +49,7 @@ func LoginByEmail(email string, password string) (*models.User, error) {
 	var user models.User
 	var hashedPassword string
 
-	err := row.Scan(&user.UserID, &user.FullName, &user.Picture, &hashedPassword)
+	err := row.Scan(&user.UserID, &user.FullName, &user.Picture, &hashedPassword, &user.SexID)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {

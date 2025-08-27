@@ -7,7 +7,7 @@ type OtpEntry struct {
 	ExpiresAt time.Time
 }
 
-type RequestOtp struct {
-	Email string `json:"email"`
-	Otp   string `json:"otp"`
+type VerifyOTPRequest struct {
+	Uuid    string `json:"uuid"`
+	OtpCode string `json:"otp_code"`
 }

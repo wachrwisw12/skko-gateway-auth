@@ -23,7 +23,7 @@ func JWTProtected() fiber.Handler {
 
 		token := strings.TrimPrefix(auth, "Bearer ")
 
-		claims, err := parseJWT(token)
+		claims, err := ParseJWT(token)
 		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid token"})
 		}
@@ -33,7 +33,15 @@ func JWTProtected() fiber.Handler {
 	}
 }
 
-func GenerateJWT(user models.User) (string, error) {
+func GenerateAccessToken(user models.User) (string, error) {
+	return generateToken(user, 30*time.Minute) // อายุ 5 นาที
+}
+
+func GenerateRefreshToken(user models.User) (string, error) {
+	return generateToken(user, 7*24*time.Hour) // อายุ 7 วัน
+}
+
+func generateToken(user models.User, duration time.Duration) (string, error) {
 	// แปลง struct → map[string]interface{} ด้วย JSON
 	userMap := make(map[string]interface{})
 
@@ -46,12 +54,12 @@ func GenerateJWT(user models.User) (string, error) {
 		return "", fmt.Errorf("unmarshal user failed: %w", err)
 	}
 
-	// สร้าง JWT claims
+	// Claims
 	claims := jwt.MapClaims{
-		"user": userMap,
-		"exp":  time.Now().Add(24 * time.Hour).Unix(),
+		// "user_id": user.UserID,
+		// "user":    userMap,
+		"exp": time.Now().Add(duration).Unix(),
 	}
-
 	// สร้าง token ด้วย HS256
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
@@ -65,7 +73,7 @@ func GenerateJWT(user models.User) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
-func parseJWT(tokenString string) (jwt.MapClaims, error) {
+func ParseJWT(tokenString string) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("JWT_SECRET")), nil
 	})
