@@ -2,62 +2,26 @@ package services
 
 import (
 	"database/sql"
-	"errors"
 
 	"skko-gateway-auth/db"
 	"skko-gateway-auth/models"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
-func LoginByUser(username string, password string) (*models.User, error) {
+func GetUserInfo(user_id int) (*models.User, error) {
 	query := `
-        SELECT u.id, CONCAT(u.name) as fullname, u.status, u.password,u.sex_id
-        FROM users u
-       
-        WHERE u.username=? 
+        SELECT  CONCAT(u.prename,u.user_first_name,'  ',u.user_last_name) as fullname,u.sex_id,u.picture FROM co_user u
+        WHERE u.user_id=? 
     `
-	row := db.DB.QueryRow(query, username)
+	row := db.DB.QueryRow(query, user_id)
 
 	var user models.User
-	var hashedPassword string
 
-	err := row.Scan(&user.UserID, &user.FullName, &user.Status, &hashedPassword, &user.SexID)
+	err := row.Scan(&user.FullName, &user.SexID, &user.Picture)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	// เปรียบเทียบ password plain กับ bcrypt hash
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
-		return nil, errors.New("รหัสผ่านไม่ถูกต้องd")
-	}
-
-	return &user, nil
-}
-
-func LoginByEmail(email string, password string) (*models.User, error) {
-	query := `
-        SELECT u.user_id, CONCAT(u.prename,u.user_first_name,' ',u.user_last_name) as fullname,u.picture,u.password,COALESCE(u.sex_id, 0) AS sex_id
-        FROM co_user u
-    
-        WHERE u.email=? 
-    `
-	row := db.DB.QueryRow(query, email)
-
-	var user models.User
-	var hashedPassword string
-
-	err := row.Scan(&user.UserID, &user.FullName, &user.Picture, &hashedPassword, &user.SexID)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-	// เปรียบเทียบ password plain กับ bcrypt hash
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
-		return nil, err
-	}
 	return &user, nil
 }

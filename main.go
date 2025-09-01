@@ -7,6 +7,7 @@ import (
 
 	"skko-gateway-auth/db"
 	"skko-gateway-auth/routes"
+	"skko-gateway-auth/utils"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
@@ -16,8 +17,9 @@ var DB *sql.DB
 
 func main() {
 	// โหลด .env
-	if err := godotenv.Load(); err != nil {
-		log.Println("⚠️ ไม่พบไฟล์ .env (ไม่เป็นไรถ้า set env ไว้ในระบบแล้ว)")
+	err := godotenv.Load() // โหลด .env
+	if err != nil {
+		log.Fatal("Error loading .env file")
 	}
 	secret := os.Getenv("SECRET_KEY_GATEWAY")
 	if secret != "skko-GateWayAuth" {
@@ -29,7 +31,8 @@ func main() {
 	if err := db.Connect(); err != nil {
 		log.Fatal("❌ ไม่สามารถเชื่อมต่อ database ได้:", err)
 	}
-
+	log.Println("db connected")
+	utils.LoadKeys()
 	app := fiber.New()
 	routes.SetupRoutes(app)
 

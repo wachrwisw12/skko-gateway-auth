@@ -1,15 +1,16 @@
 package middleware
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
+	"database/sql"
+	"log"
 	"strings"
 	"time"
 
-	"skko-gateway-auth/models"
+	"skko-gateway-auth/db"
+	"skko-gateway-auth/utils"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -21,65 +22,180 @@ func JWTProtected() fiber.Handler {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "missing token"})
 		}
 
-		token := strings.TrimPrefix(auth, "Bearer ")
+		tokenString := strings.TrimPrefix(auth, "Bearer ")
 
-		claims, err := ParseJWT(token)
+		token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
+				return nil, fiber.ErrUnauthorized
+			}
+			return utils.PublicKey, nil
+		})
 		if err != nil {
+			if strings.Contains(err.Error(), "token is expired") {
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "token_expired"})
+			}
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid token"})
 		}
 
-		c.Locals("user_id", claims["user_id"])
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok || !token.Valid {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid token claims"})
+		}
+
+		// ตรวจสอบ session_id กับ DB
+		var status string
+		var userID int
+
+		err = db.DB.QueryRow(`SELECT user_id,status FROM user_sessions_app WHERE session_id=?`, claims["sessionId"]).Scan(&userID, &status)
+		if err != nil || status != "active" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "session_inactive"})
+		}
+
+		c.Locals("session_id", claims["sessionId"])
+		c.Locals("user_id", userID)
 		return c.Next()
 	}
 }
 
-func GenerateAccessToken(user models.User) (string, error) {
-	return generateToken(user, 30*time.Minute) // อายุ 5 นาที
-}
-
-func GenerateRefreshToken(user models.User) (string, error) {
-	return generateToken(user, 7*24*time.Hour) // อายุ 7 วัน
-}
-
-func generateToken(user models.User, duration time.Duration) (string, error) {
-	// แปลง struct → map[string]interface{} ด้วย JSON
-	userMap := make(map[string]interface{})
-
-	b, err := json.Marshal(user)
+func GenerateTokensAndSaveSession(userId int, device string) (accessToken, sessionId string, err error) {
+	utils.LoadKeys()
+	sessionId = uuid.NewString()
+	log.Println("device is", device)
+	// สร้าง token
+	accessClaims := jwt.MapClaims{
+		"sessionId": sessionId,
+		"exp":       time.Now().Add(30 * time.Minute).Unix(),
+	}
+	at := jwt.NewWithClaims(jwt.SigningMethodRS256, accessClaims)
+	accessToken, err = at.SignedString(utils.PrivateKey)
 	if err != nil {
-		return "", fmt.Errorf("marshal user failed: %w", err)
+		return
 	}
 
-	if err := json.Unmarshal(b, &userMap); err != nil {
-		return "", fmt.Errorf("unmarshal user failed: %w", err)
+	refreshClaims := jwt.MapClaims{
+		"sid": sessionId,
+		"exp": time.Now().Add(100 * 24 * time.Hour).Unix(),
+	}
+	rt := jwt.NewWithClaims(jwt.SigningMethodRS256, refreshClaims)
+	refreshToken, err := rt.SignedString(utils.PrivateKey)
+	if err != nil {
+		return
 	}
 
-	// Claims
-	claims := jwt.MapClaims{
-		// "user_id": user.UserID,
-		// "user":    userMap,
-		"exp": time.Now().Add(duration).Unix(),
+	// Transaction
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return
 	}
-	// สร้าง token ด้วย HS256
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
 
-	// อ่าน JWT_SECRET จาก environment
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		return "", fmt.Errorf("missing JWT_SECRET environment variable")
+	// นับ session
+	var count int
+	err = tx.QueryRow(`
+        SELECT COUNT(*) FROM user_sessions_app 
+        WHERE user_id = ? AND status = 'active'
+    `, userId).Scan(&count)
+	if err != nil {
+		return
 	}
 
-	// สร้าง JWT string
-	return token.SignedString([]byte(secret))
+	// // ลบ session เก่าที่สุดถ้าเกิน 3
+	// if count >= 3 {
+	// 	var oldestSession string
+	// 	err = tx.QueryRow(`
+	//         SELECT session_id FROM user_sessions_app
+	//         WHERE user_id = ? AND status = 'active'
+	//         ORDER BY access_expires_at ASC LIMIT 1
+	//     `, userId).Scan(&oldestSession)
+	// 	if err != nil {
+	// 		return
+	// 	}
+	// 	_, err = tx.Exec(`UPDATE  user_sessions_app SET status='revoked' WHERE session_id = ?`, oldestSession)
+	// 	if err != nil {
+	// 		return
+	// 	}
+	// }
+
+	// บันทึก session ใหม่
+	_, err = tx.Exec(`
+        INSERT INTO user_sessions_app(
+            session_id, user_id,device,access_token,refresh_token,status,access_expires_at,refresh_expires_at
+        ) VALUES (?, ?, ?, ?, ?, 'active', ?, ?)
+    `, sessionId, userId, device, accessToken, refreshToken,
+		time.Now().Add(30*time.Minute), time.Now().Add(100*24*time.Hour))
+	return
 }
 
-func ParseJWT(tokenString string) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("JWT_SECRET")), nil
-	})
+// RefreshSessionToken รับ session_id แล้ว return access + refresh token ใหม่
+func RefreshSessionToken(sessionID string) (newAccess, newRefresh string, err error) {
+	var refreshToken string
+	var status string
+	var refreshExp time.Time
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		return claims, nil
+	// 1️⃣ Query session จาก DB
+	err = db.DB.QueryRow(`
+        SELECT refresh_token, status, refresh_expires_at 
+        FROM user_sessions_app 
+        WHERE session_id = ?
+    `, sessionID).Scan(&refreshToken, &status, &refreshExp)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = fiber.ErrUnauthorized
+		}
+		return
 	}
-	return nil, err
+
+	if status != "active" {
+		err = fiber.ErrUnauthorized
+		return
+	}
+
+	// 2️⃣ Verify refresh token
+	token, parseErr := jwt.Parse(refreshToken, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fiber.ErrUnauthorized
+		}
+		return utils.PublicKey, nil
+	})
+	if parseErr != nil || !token.Valid || time.Now().After(refreshExp) {
+		err = fiber.ErrUnauthorized
+		return
+	}
+
+	// 3️⃣ สร้าง access token ใหม่
+	accessClaims := jwt.MapClaims{
+		"sessionId": sessionID,
+		"exp":       time.Now().Add(30 * time.Minute).Unix(),
+	}
+	at := jwt.NewWithClaims(jwt.SigningMethodRS256, accessClaims)
+	newAccess, err = at.SignedString(utils.PrivateKey)
+	if err != nil {
+		return
+	}
+
+	// 4️⃣ สร้าง refresh token ใหม่ (rotate)
+	refreshClaims := jwt.MapClaims{
+		"sid": sessionID,
+		"exp": time.Now().Add(100 * 24 * time.Hour).Unix(),
+	}
+	rt := jwt.NewWithClaims(jwt.SigningMethodRS256, refreshClaims)
+	newRefresh, err = rt.SignedString(utils.PrivateKey)
+	if err != nil {
+		return
+	}
+
+	// 5️⃣ Update DB
+	_, err = db.DB.Exec(`
+        UPDATE user_sessions_app 
+        SET access_token=?, refresh_token=?, access_expires_at=?, refresh_expires_at=? 
+        WHERE session_id=?`,
+		newAccess, newRefresh, time.Now().Add(30*time.Minute), time.Now().Add(100*24*time.Hour), sessionID,
+	)
+	return
 }
