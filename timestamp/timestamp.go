@@ -32,7 +32,7 @@ func TimestampHome(c *fiber.Ctx) error {
 
 	parts := strings.Split(locateOffice, ",") // แยกด้วย comma
 	if len(parts) != 2 {
-		fmt.Println("พิกัดไม่ถูกต้อง")
+		fmt.Println("พิกัดไม่ถูกต้องs")
 	}
 
 	lat, err1 := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
