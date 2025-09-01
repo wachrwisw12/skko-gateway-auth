@@ -2,7 +2,6 @@ package routes
 
 import (
 	"skko-gateway-auth/handler_auth"
-	handlerleave "skko-gateway-auth/handler_leave"
 	"skko-gateway-auth/middleware"
 	"skko-gateway-auth/timestamp"
 
@@ -20,5 +19,5 @@ func SetupAuth(auth fiber.Router) {
 	protected.Post("/hometimeStamp", timestamp.TimestampHome)
 
 	// ระบบ ลา
-	protected.Post("/getleave", handlerleave.GetleaveHandler)
+	// protected.Post("/getleave", handlerleave.GetleaveHandler)
 }

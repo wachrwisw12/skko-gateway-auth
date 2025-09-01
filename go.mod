@@ -2,9 +2,9 @@ module skko-gateway-auth
 
 go 1.24.4
 
-replace skko-timekeeping-ms => ../skko-timekeeping-ms
+// replace skko-timekeeping-ms => ../skko-timekeeping-ms
 
-replace skko-leave-ms => ../skko-leave-ms
+// replace skko-leave-ms => ../skko-leave-ms
 
 require (
 	github.com/go-sql-driver/mysql v1.9.3
@@ -13,8 +13,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	google.golang.org/grpc v1.75.0
-	skko-leave-ms v0.0.0
-	skko-timekeeping-ms v0.0.0
+// skko-leave-ms v0.0.0
+// skko-timekeeping-ms v0.0.0
 )
 
 require (
