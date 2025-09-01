@@ -1,10 +1,8 @@
-FROM golang:1.24 AS builder
+# Build stage
+FROM golang:1.24-alpine AS builder
 WORKDIR /app
 
 ENV CGO_ENABLED=0 GOOS=linux
-
-# ติดตั้ง git บน Debian/Ubuntu
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -12,7 +10,8 @@ RUN go mod download
 COPY . .
 RUN go build -o gateway main.go
 
-FROM alpine:3.20
+# Final stage
+FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/gateway .
 EXPOSE 3000
