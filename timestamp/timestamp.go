@@ -53,7 +53,7 @@ func TimestampHome(c *fiber.Ctx) error {
 	now := time.Now().In(loc)
 
 	serverDateTime := now.Format("2006-01-02 15:04:05")
-	print(rowsExist)
+	print(lat, lng, serverDateTime, rowsExist)
 	return c.JSON(fiber.Map{
 		"allowedLat":     lat,
 		"allowedLng":     lng,
