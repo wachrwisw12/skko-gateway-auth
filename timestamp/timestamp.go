@@ -49,8 +49,10 @@ func TimestampHome(c *fiber.Ctx) error {
 
 	fmt.Println("Latitude:", lat)
 	fmt.Println("Longitude:", lng)
+
+	// เวลาปัจจุบัน
 	now := time.Now().In(loc)
-	serverDateTime := now.Format("2006-01-02 15:04:05")
+	serverDateTime := now.Format(time.RFC3339) // ISO8601
 	print(rowsExist)
 	return c.JSON(fiber.Map{
 		"allowedLat":     lat,
