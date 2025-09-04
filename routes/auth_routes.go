@@ -12,12 +12,13 @@ func SetupAuth(auth fiber.Router) {
 	auth.Post("/verify-otp", handler_auth.VerifyOtpHandler)
 	auth.Post("/checkQrcode", handler_auth.CheckQrcodeHandler)
 	auth.Post("/refresh-token", handler_auth.RefreshTokenHandler)
+	auth.Post("/verify-token", handler_auth.VerifyTokenHandler)
 	// หน้าหลัก
 	// Group routes ที่ต้อง login
 	protected := auth.Group("/", middleware.JWTProtected())
 	// ระบบ ลงเวลา
 	protected.Post("/hometimeStamp", timestamp.TimestampHome)
-
+	protected.Post("/checkin-timeStamp", timestamp.TimestampCheckIn)
 	// ระบบ ลา
 	// protected.Post("/getleave", handlerleave.GetleaveHandler)
 }

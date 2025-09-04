@@ -1,6 +1,8 @@
 package handler_auth
 
 import (
+	"strings"
+
 	"skko-gateway-auth/middleware"
 
 	"github.com/gofiber/fiber/v2"
@@ -24,4 +26,18 @@ func RefreshTokenHandler(c *fiber.Ctx) error {
 		"accessToken": newAccess,
 		"session_id":  req.SessionID,
 	})
+}
+
+func VerifyTokenHandler(c *fiber.Ctx) error {
+	// ดึง token จาก header
+	auth := c.Get("Authorization")
+	if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "missing token"})
+	}
+
+	token := strings.TrimPrefix(auth, "Bearer ")
+
+	isExpired := middleware.IsTokenExpired(token)
+
+	return c.JSON(fiber.Map{"expired": isExpired})
 }

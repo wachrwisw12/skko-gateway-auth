@@ -7,7 +7,7 @@ import (
 )
 
 func HasLeave(UserID int) (bool, error) {
-	query := `SELECT 1 FROM officedd_timestamp.leave WHERE user_id=? AND date = DATE(NOW())`
+	query := `SELECT user_id,leave_id FROM officedd_timestamp.leave WHERE user_id=? AND date = DATE(NOW())`
 	var dummy int
 	err := db.DB.QueryRow(query, UserID).Scan(&dummy)
 	if err != nil {
@@ -40,3 +40,14 @@ func GetLocalOffice(UserID int) (string, error) {
 
 	return gps, nil
 }
+
+// func CheckTimeInOut(UserID int) (string, string, error) {
+// 	query := `SELECT checkin_date_time,checkout_date_time FROM timestamp WHERE user_id=? AND date = DATE(NOW())`
+// 	var checkin_date_time string
+// 	var checkout_date_time string
+// 	err := db.DB.QueryRow(query, UserID).Scan(&checkin_date_time, &checkout_date_time)
+// 	if err != nil {
+// 		return "", "", err
+// 	}
+// 	return checkin_date_time, checkout_date_time, nil
+// }

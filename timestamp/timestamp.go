@@ -29,7 +29,12 @@ func TimestampHome(c *fiber.Ctx) error {
 			"error": err.Error(),
 		})
 	}
-
+	// checkin_date_time, checkout_date_time, err := CheckTimeInOut(UserID)
+	// if err != nil {
+	// 	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+	// 		"error": err.Error(),
+	// 	})
+	// }
 	parts := strings.Split(locateOffice, ",") // แยกด้วย comma
 	if len(parts) != 2 {
 		fmt.Println("พิกัดไม่ถูกต้องs")
@@ -53,5 +58,54 @@ func TimestampHome(c *fiber.Ctx) error {
 		"allowedRadius":  50,
 		"serverDateTime": serverDateTime,
 		"hasLeave":       rowsExist,
+		// "checkin_date_time":  checkin_date_time,
+		// "checkout_date_time": checkout_date_time,
+	})
+}
+
+type CheckinRequest struct {
+	Type string  `json:"type"` // "in" หรือ "out"
+	Lat  float64 `json:"lat"`
+	Lng  float64 `json:"lng"`
+}
+
+func TimestampCheckIn(c *fiber.Ctx) error {
+	// อ่าน timezone Asia/Bangkok
+	// loc, _ := time.LoadLocation("Asia/Bangkok")
+	// now := time.Now().In(loc)
+
+	// // parse body
+	var body CheckinRequest
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request: " + err.Error(),
+		})
+	}
+
+	// // สมมติว่ามี userId มาจาก middleware (JWT)
+	// userId := c.Locals("userId")
+	// if userId == nil {
+	// 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+	// 		"error": "Unauthorized",
+	// 	})
+	// }
+
+	// // TODO: insert ลง DB จริง เช่น Postgres/MySQL
+	// // ตัวอย่าง record
+	// checkinData := fiber.Map{
+	// 	"userId":    userId,
+	// 	"type":      body.Type, // "in" หรือ "out"
+	// 	"lat":       body.Lat,
+	// 	"lng":       body.Lng,
+	// 	"timestamp": now.Format("2006-01-02 15:04:05"),
+	// }
+
+	// ส่ง response กลับ
+	return c.JSON(fiber.Map{
+		"message": "Check-in success",
+		// "data":    checkinData,
+		"body":               body.Type,
+		"checkin_date_time":  "",
+		"checkout_date_time": "",
 	})
 }

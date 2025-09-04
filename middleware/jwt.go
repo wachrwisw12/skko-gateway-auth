@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
 	"log"
 	"strings"
 	"time"
@@ -198,4 +200,34 @@ func RefreshSessionToken(sessionID string) (newAccess, newRefresh string, err er
 		newAccess, newRefresh, time.Now().Add(30*time.Minute), time.Now().Add(100*24*time.Hour), sessionID,
 	)
 	return
+}
+
+// คืน true ถ้า token หมดอายุ, false ถ้ายังใช้ได้
+func IsTokenExpired(token string) bool {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return true // token ผิดรูปแบบ → ถือว่าหมดอายุ
+	}
+
+	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return true // decode ไม่ได้ → หมดอายุ
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
+		return true // unmarshal ไม่ได้ → หมดอายุ
+	}
+
+	expVal, ok := payload["exp"]
+	if !ok {
+		return true // ไม่มี exp → หมดอายุ
+	}
+
+	expFloat, ok := expVal.(float64)
+	if !ok {
+		return true // exp ไม่ใช่ตัวเลข → หมดอายุ
+	}
+
+	return time.Now().After(time.Unix(int64(expFloat), 0))
 }
