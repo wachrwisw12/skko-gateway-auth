@@ -21,40 +21,60 @@ func JWTProtected() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		auth := c.Get("Authorization")
 		if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "missing token"})
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "missing_token"})
 		}
 
 		tokenString := strings.TrimPrefix(auth, "Bearer ")
 
-		token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+		// 1️⃣ Parse JWT โดยไม่ validate claims (ยังไม่เช็ก exp)
+		token, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
 				return nil, fiber.ErrUnauthorized
 			}
 			return utils.PublicKey, nil
-		})
+		}, jwt.WithoutClaimsValidation())
 		if err != nil {
-			if strings.Contains(err.Error(), "token is expired") {
-				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "token_expired"})
-			}
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid token"})
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "token_invalid"})
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok || !token.Valid {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid token claims"})
+		if !ok {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "token_invalid_claims"})
 		}
 
-		// ตรวจสอบ session_id กับ DB
+		sessionID, ok := claims["sessionId"].(string)
+		if !ok || sessionID == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "missing_session_id"})
+		}
+
+		// 2️⃣ ตรวจสอบ session status ใน DB
 		var status string
 		var userID int
-
-		err = db.DB.QueryRow(`SELECT user_id,status FROM user_sessions_app WHERE session_id=?`, claims["sessionId"]).Scan(&userID, &status)
-		if err != nil || status != "active" {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "session_inactive"})
+		err = db.DB.QueryRow(`SELECT user_id, status FROM user_sessions_app WHERE session_id=?`, sessionID).Scan(&userID, &status)
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "session_not_found"})
 		}
 
-		c.Locals("session_id", claims["sessionId"])
+		if status != "active" {
+			// revoked / inactive → block
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "token_revoked"})
+		}
+
+		// 3️⃣ ค่อยตรวจสอบ expired
+		if expVal, ok := claims["exp"].(float64); ok {
+			expTime := time.Unix(int64(expVal), 0)
+			if time.Now().After(expTime) {
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "token_expired"})
+			}
+		} else {
+			// ถ้าไม่มี exp claim
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "token_missing_exp"})
+		}
+
+		// ✅ ผ่านทุกอย่าง → เซ็ตข้อมูลไว้ใน context
+		c.Locals("session_id", sessionID)
 		c.Locals("user_id", userID)
+
 		return c.Next()
 	}
 }
@@ -157,7 +177,6 @@ func RefreshSessionToken(sessionID string) (newAccess, newRefresh string, err er
 		err = fiber.ErrUnauthorized
 		return
 	}
-
 	// 2️⃣ Verify refresh token
 	token, parseErr := jwt.Parse(refreshToken, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {

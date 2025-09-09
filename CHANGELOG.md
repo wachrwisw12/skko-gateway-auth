@@ -11,3 +11,4 @@ git push origin v1.1.0
 - แก้ไขการส่งข้อมูลหน้า ลงเวลา
 ## v1.0.2 -2025-09-04
 -แก้ type serverDatetime
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o myapp

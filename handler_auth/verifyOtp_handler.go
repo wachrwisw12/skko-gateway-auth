@@ -2,7 +2,6 @@ package handler_auth
 
 import (
 	"database/sql"
-	"fmt"
 
 	"skko-gateway-auth/db"
 	"skko-gateway-auth/middleware"
@@ -37,7 +36,7 @@ func VerifyOtpHandler(c *fiber.Ctx) error {
 	var user models.VerifyOTPRequest
 	err := db.DB.QueryRow(query, body.Uuid, body.OtpCode).Scan(&user.Uuid, &user.OtpCode, &user.Userid)
 	if err == sql.ErrNoRows {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"message": "รหัส OTP ไม่ถูกต้องหรือหมดเวลา",
 		})
 	} else if err != nil {
@@ -63,7 +62,6 @@ func VerifyOtpHandler(c *fiber.Ctx) error {
 	})
 }
 
-// ตรวจสอบ QR Code
 func CheckQrcodeHandler(c *fiber.Ctx) error {
 	var body models.VerifyOTPRequest
 	if err := c.BodyParser(&body); err != nil {
@@ -72,27 +70,41 @@ func CheckQrcodeHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	fmt.Println("UUID:", body.Uuid)
+	// Query: คืน row พร้อม status valid/expired
+	row := db.DB.QueryRow(`
+        SELECT uuid,
+               CASE
+                   WHEN expired_datetime > NOW() THEN 'valid'
+                   ELSE 'expired'
+               END AS status
+        FROM otp
+        WHERE uuid = ?;
+    `, body.Uuid)
 
-	query := `
-		SELECT uuid
-		FROM otp
-		WHERE uuid = ? AND expired_datetime > NOW();
-	`
-	var uuid string
-	err := db.DB.QueryRow(query, body.Uuid).Scan(&uuid)
-	if err == sql.ErrNoRows {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "QRCODE หมดเวลา",
-		})
-	} else if err != nil {
+	var id string
+	var status string
+	err := row.Scan(&id, &status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// OTP ไม่เจอ
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"error": "QRCODE ไม่ถูกต้อง",
+			})
+		}
+		// error จริงจาก DB
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
 
+	// เช็ก status ที่ query คืนมา
+	if status == "expired" {
+		return c.Status(fiber.StatusGone).JSON(fiber.Map{
+			"error": "OTP expired",
+		})
+	}
+
 	return c.JSON(fiber.Map{
 		"message": "QRCODE valid",
-		"uuid":    uuid,
 	})
 }

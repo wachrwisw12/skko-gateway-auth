@@ -11,8 +11,6 @@ import (
 
 func TimestampHome(c *fiber.Ctx) error {
 	UserID := c.Locals("user_id").(int)
-	fmt.Println("UserID from JWT:", c.Locals("user_id"))
-	fmt.Println("SessionID from JWT:", c.Locals("session_id"))
 	loc, err := time.LoadLocation("Asia/Bangkok")
 	if err != nil {
 		return nil
@@ -48,12 +46,9 @@ func TimestampHome(c *fiber.Ctx) error {
 		fmt.Println("แปลงเป็น float ไม่สำเร็จ")
 	}
 
-	fmt.Println("Latitude:", lat)
-	fmt.Println("Longitude:", lng)
 	now := time.Now().In(loc)
+	serverDateTime := now.Format(time.RFC3339)
 
-	serverDateTime := now.Format("2006-01-02 15:04:05")
-	print(lat, lng, serverDateTime, rowsExist)
 	return c.JSON(fiber.Map{
 		"allowedLat":     lat,
 		"allowedLng":     lng,

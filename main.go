@@ -2,8 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"skko-gateway-auth/db"
 	"skko-gateway-auth/routes"
@@ -35,6 +37,6 @@ func main() {
 	utils.LoadKeys()
 	app := fiber.New()
 	routes.SetupRoutes(app)
-
+	fmt.Println("dfd", time.Now())
 	log.Fatal(app.Listen(":3000"))
 }

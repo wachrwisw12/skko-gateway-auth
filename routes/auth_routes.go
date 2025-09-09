@@ -3,6 +3,7 @@ package routes
 import (
 	"skko-gateway-auth/handler_auth"
 	"skko-gateway-auth/middleware"
+	"skko-gateway-auth/services"
 	"skko-gateway-auth/timestamp"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,6 +17,8 @@ func SetupAuth(auth fiber.Router) {
 	// หน้าหลัก
 	// Group routes ที่ต้อง login
 	protected := auth.Group("/", middleware.JWTProtected())
+	// หน้าหลัก
+	protected.Get("/home", services.HomeApp)
 	// ระบบ ลงเวลา
 	protected.Post("/hometimeStamp", timestamp.TimestampHome)
 	protected.Post("/checkin-timeStamp", timestamp.TimestampCheckIn)
