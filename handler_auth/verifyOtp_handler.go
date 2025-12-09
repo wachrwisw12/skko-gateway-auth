@@ -46,6 +46,7 @@ func VerifyOtpHandler(c *fiber.Ctx) error {
 	}
 	userInfo, err := services.GetUserInfo(user.Userid)
 	if err != nil {
+		print(err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err})
 	}
 	// สร้าง token และ session

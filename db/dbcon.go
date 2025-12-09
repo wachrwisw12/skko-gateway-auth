@@ -19,7 +19,7 @@ func Connect() error {
 	name := os.Getenv("DB_NAME")
 
 	// DSN
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&timeout=5s&readTimeout=30s&writeTimeout=30s",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Asia%%2FBangkok&timeout=5s&readTimeout=30s&writeTimeout=30s",
 		user, pass, host, port, name)
 
 	var err error

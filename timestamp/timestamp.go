@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"skko-gateway-auth/models"
+
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -18,22 +20,10 @@ func TimestampHome(c *fiber.Ctx) error {
 	locateOffice, err := GetLocalOffice(UserID)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err,
-		})
-	}
-	// เรียกฟังก์ชันเช็ค leave
-	rowsExist, err := HasLeave(UserID)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
-	// checkin_date_time, checkout_date_time, err := CheckTimeInOut(UserID)
-	// if err != nil {
-	// 	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-	// 		"error": err.Error(),
-	// 	})
-	// }
+
 	parts := strings.Split(locateOffice, ",") // แยกด้วย comma
 	if len(parts) != 2 {
 		fmt.Println("พิกัดไม่ถูกต้อง")
@@ -45,48 +35,52 @@ func TimestampHome(c *fiber.Ctx) error {
 	if err1 != nil || err2 != nil {
 		fmt.Println("แปลงเป็น float ไม่สำเร็จ")
 	}
+	checkState, err := CheckinState(UserID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
 
 	now := time.Now().In(loc)
-	serverDateTime := now.Format(time.RFC3339)
+	serverDateTime := now.Format(time.RFC3339) // => จะได้ +07:00
 
 	return c.JSON(fiber.Map{
 		"allowedLat":     lat,
 		"allowedLng":     lng,
 		"allowedRadius":  50,
-		"serverDateTime": serverDateTime,
-		"hasLeave":       rowsExist,
-		// "checkin_date_time":  checkin_date_time,
-		// "checkout_date_time": checkout_date_time,
+		"serverDateTime": serverDateTime, // เวลาปัจจุบัน +07:00
+		"checkinState":   checkState,
 	})
 }
 
-type CheckinRequest struct {
-	Type string  `json:"type"` // "in" หรือ "out"
-	Lat  float64 `json:"lat"`
-	Lng  float64 `json:"lng"`
-}
-
 func TimestampCheckIn(c *fiber.Ctx) error {
-	// อ่าน timezone Asia/Bangkok
-	// loc, _ := time.LoadLocation("Asia/Bangkok")
-	// now := time.Now().In(loc)
+	userId := c.Locals("user_id").(int)
 
 	// // parse body
-	var body CheckinRequest
+	var body models.CheckinRequest
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request: " + err.Error(),
 		})
 	}
+	if body.Period == 1 {
+		err := Checkin(userId, body)
+		if err != nil {
+			return err
+		}
+	} else if body.Period == 2 {
+		err := Checkout(userId, body)
+		if err != nil {
+			return err
+		}
+	} else {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "ข้อมูลไม่ถูกต้อง",
+		})
+	}
 
-	// // สมมติว่ามี userId มาจาก middleware (JWT)
-	// userId := c.Locals("userId")
-	// if userId == nil {
-	// 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-	// 		"error": "Unauthorized",
-	// 	})
-	// }
-
+	// print(userId)
 	// // TODO: insert ลง DB จริง เช่น Postgres/MySQL
 	// // ตัวอย่าง record
 	// checkinData := fiber.Map{
@@ -98,11 +92,45 @@ func TimestampCheckIn(c *fiber.Ctx) error {
 	// }
 
 	// ส่ง response กลับ
+	// return c.JSON(fiber.Map{
+	// 	"message":          "Check-in success",
+	// 	"lat":              body.Lat,
+	// 	"lng":              body.Lng,
+	// 	"working_table_id": body.Workingtableid,
+	// })
+	return nil
+}
+
+func TimeStampHistory(c *fiber.Ctx) error {
+	UserID := c.Locals("user_id").(int)
+	historyData, err := GetTimestampHistory(UserID)
+	if err != nil {
+		return err
+	}
 	return c.JSON(fiber.Map{
-		"message": "Check-in success",
-		// "data":    checkinData,
-		"body":               body.Type,
-		"checkin_date_time":  "",
-		"checkout_date_time": "",
+		"message": "test",
+		"data":    historyData,
 	})
 }
+
+// func TimeTest(c *fiber.Ctx) error {
+// 	var body models.CheckinRequest
+// 	if err := c.BodyParser(&body); err != nil {
+// 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+// 			"error": "Invalid request: " + err.Error(),
+// 		})
+// 	}
+
+// 	// เรียกฟังก์ชันเช็คสาย
+// 	status, err := CheckLate(body.CheckinDatetime)
+// 	if err != nil {
+// 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+// 			"error": err.Error(),
+// 		})
+// 	}
+
+// 	return c.JSON(fiber.Map{
+// 		"result": "ok",
+// 		"status": status, // สาย / ทันเวลา
+// 	})
+// }

@@ -127,29 +127,11 @@ func GenerateTokensAndSaveSession(userId int, device string) (accessToken, sessi
 		return
 	}
 
-	// // ลบ session เก่าที่สุดถ้าเกิน 3
-	// if count >= 3 {
-	// 	var oldestSession string
-	// 	err = tx.QueryRow(`
-	//         SELECT session_id FROM user_sessions_app
-	//         WHERE user_id = ? AND status = 'active'
-	//         ORDER BY access_expires_at ASC LIMIT 1
-	//     `, userId).Scan(&oldestSession)
-	// 	if err != nil {
-	// 		return
-	// 	}
-	// 	_, err = tx.Exec(`UPDATE  user_sessions_app SET status='revoked' WHERE session_id = ?`, oldestSession)
-	// 	if err != nil {
-	// 		return
-	// 	}
-	// }
-
 	// บันทึก session ใหม่
 	_, err = tx.Exec(`
         INSERT INTO user_sessions_app(
             session_id, user_id,device,access_token,refresh_token,status,access_expires_at,refresh_expires_at
-        ) VALUES (?, ?, ?, ?, ?, 'active', ?, ?)
-    `, sessionId, userId, device, accessToken, refreshToken,
+        ) VALUES (?, ?, ?, ?, ?, 'active', ?, ?)`, sessionId, userId, device, accessToken, refreshToken,
 		time.Now().Add(30*time.Minute), time.Now().Add(100*24*time.Hour))
 	return
 }
@@ -214,9 +196,9 @@ func RefreshSessionToken(sessionID string) (newAccess, newRefresh string, err er
 	// 5️⃣ Update DB
 	_, err = db.DB.Exec(`
         UPDATE user_sessions_app 
-        SET access_token=?, refresh_token=?, access_expires_at=?, refresh_expires_at=? 
+        SET access_token=?, refresh_token=?, access_expires_at=?, refresh_expires_at=? ,access_token_update_at=?
         WHERE session_id=?`,
-		newAccess, newRefresh, time.Now().Add(30*time.Minute), time.Now().Add(100*24*time.Hour), sessionID,
+		newAccess, newRefresh, time.Now().Add(30*time.Minute), time.Now().Add(100*24*time.Hour), time.Now().Add(100*24*time.Hour), sessionID,
 	)
 	return
 }
